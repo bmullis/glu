@@ -4,6 +4,7 @@ struct ClipboardCardView: View {
     let entry: ClipboardEntry
     let isSelected: Bool
     let onSelect: () -> Void
+    let onCopy: () -> Void
     let onDelete: () -> Void
 
     var body: some View {
@@ -32,6 +33,8 @@ struct ClipboardCardView: View {
         .animation(.easeOut(duration: 0.15), value: isSelected)
         .onTapGesture { onSelect() }
         .contextMenu {
+            Button("Copy") { onCopy() }
+            Divider()
             Button("Delete", role: .destructive) { onDelete() }
         }
     }

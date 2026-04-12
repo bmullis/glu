@@ -9,11 +9,9 @@ final class HotkeyManager {
     func register() {
         let hk = HotKey(key: .v, modifiers: [.command, .shift])
         hk.keyDownHandler = { [weak self] in
-            NSLog("[Glu] Hotkey fired")
             self?.onToggle?()
         }
         hotKey = hk
-        NSLog("[Glu] Hotkey registered: Cmd+Shift+V")
     }
 
     func unregister() {
@@ -21,9 +19,7 @@ final class HotkeyManager {
     }
 
     static func checkAccessibilityPermission() -> Bool {
-        let trusted = AXIsProcessTrusted()
-        NSLog("[Glu] Accessibility check: \(trusted)")
-        return trusted
+        return AXIsProcessTrusted()
     }
 
     static func requestAccessibilityPermission() {

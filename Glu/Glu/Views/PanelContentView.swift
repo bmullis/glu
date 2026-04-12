@@ -1,18 +1,40 @@
 import SwiftUI
 import SwiftData
+import AppKit
+
+@MainActor
+final class PanelState: ObservableObject {
+    @Published var selectedID: UUID?
+    var entries: [ClipboardEntry] = []
+    var onSelect: ((ClipboardEntry) -> Void)?
+
+    func navigate(_ direction: Int) {
+        guard !entries.isEmpty else { return }
+        guard let currentID = selectedID,
+              let currentIndex = entries.firstIndex(where: { $0.id == currentID }) else {
+            selectedID = direction > 0 ? entries.first?.id : entries.last?.id
+            return
+        }
+        let newIndex = max(0, min(entries.count - 1, currentIndex + direction))
+        selectedID = entries[newIndex].id
+    }
+
+    func selectCurrent() {
+        guard let id = selectedID,
+              let entry = entries.first(where: { $0.id == id }) else { return }
+        onSelect?(entry)
+    }
+}
 
 struct PanelContentView: View {
     @Query(sort: \ClipboardEntry.createdAt, order: .reverse) private var entries: [ClipboardEntry]
     @State private var searchText = ""
-    @State private var selectedIndex: Int? = 0
+    @ObservedObject var panelState: PanelState
     let modelContext: ModelContext
-    let onSelect: (ClipboardEntry) -> Void
-    let onNavigate: ((_ register: @escaping (_ direction: Int) -> Void, _ select: @escaping () -> Void) -> Void)?
 
-    init(modelContext: ModelContext, onSelect: @escaping (ClipboardEntry) -> Void, onNavigate: ((_ register: @escaping (_ direction: Int) -> Void, _ select: @escaping () -> Void) -> Void)? = nil) {
+    init(modelContext: ModelContext, panelState: PanelState) {
         self.modelContext = modelContext
-        self.onSelect = onSelect
-        self.onNavigate = onNavigate
+        self.panelState = panelState
     }
 
     private var filteredEntries: [ClipboardEntry] {
@@ -41,7 +63,7 @@ struct PanelContentView: View {
             }
         }
         .background(.ultraThinMaterial)
-        .background(Color(nsColor: NSColor(white: 0.08, alpha: 0.6)))
+        .background(Color(nsColor: NSColor(white: 0.06, alpha: 0.35)))
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .overlay(
             RoundedRectangle(cornerRadius: 16)
@@ -49,8 +71,15 @@ struct PanelContentView: View {
         )
         .padding(.horizontal, 12)
         .padding(.bottom, 10)
+        .onChange(of: filteredEntries.map(\.id)) { _, newIDs in
+            panelState.entries = filteredEntries
+            if panelState.selectedID == nil || !newIDs.contains(panelState.selectedID!) {
+                panelState.selectedID = newIDs.first
+            }
+        }
         .onAppear {
-            onNavigate?(navigateSelection, selectCurrent)
+            panelState.entries = filteredEntries
+            panelState.selectedID = filteredEntries.first?.id
         }
     }
 
@@ -83,42 +112,45 @@ struct PanelContentView: View {
         ScrollViewReader { proxy in
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(spacing: 18) {
-                    ForEach(Array(filteredEntries.enumerated()), id: \.element.id) { index, entry in
+                    ForEach(filteredEntries, id: \.id) { entry in
                         ClipboardCardView(
                             entry: entry,
-                            isSelected: selectedIndex == index,
-                            onSelect: { onSelect(entry) },
+                            isSelected: panelState.selectedID == entry.id,
+                            onSelect: { panelState.onSelect?(entry) },
+                            onCopy: { copyEntry(entry) },
                             onDelete: { deleteEntry(entry) }
                         )
-                        .id(index)
+                        .id(entry.id)
                     }
                 }
                 .padding(.horizontal, 28)
                 .padding(.vertical, 24)
             }
-            .onChange(of: selectedIndex) { _, newIndex in
-                if let idx = newIndex {
+            .onChange(of: panelState.selectedID) { _, newID in
+                if let id = newID {
                     withAnimation(.easeOut(duration: 0.2)) {
-                        proxy.scrollTo(idx, anchor: .center)
+                        proxy.scrollTo(id, anchor: .center)
                     }
                 }
             }
         }
     }
 
-    private func navigateSelection(_ direction: Int) {
-        let count = filteredEntries.count
-        guard count > 0 else { return }
-        if let current = selectedIndex {
-            selectedIndex = max(0, min(count - 1, current + direction))
-        } else {
-            selectedIndex = direction > 0 ? 0 : count - 1
+    private func copyEntry(_ entry: ClipboardEntry) {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        switch entry.contentType {
+        case .text, .url:
+            if let text = String(data: entry.content, encoding: .utf8) {
+                pasteboard.setString(text, forType: .string)
+            }
+        case .image:
+            pasteboard.setData(entry.content, forType: .png)
+        case .file:
+            if let urlString = String(data: entry.content, encoding: .utf8) {
+                pasteboard.setString(urlString, forType: NSPasteboard.PasteboardType("public.file-url"))
+            }
         }
-    }
-
-    private func selectCurrent() {
-        guard let index = selectedIndex, index < filteredEntries.count else { return }
-        onSelect(filteredEntries[index])
     }
 
     private func deleteEntry(_ entry: ClipboardEntry) {

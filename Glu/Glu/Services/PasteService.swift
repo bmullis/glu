@@ -17,15 +17,20 @@ final class PasteService {
     }
 
     func simulatePaste() {
-        let source = CGEventSource(stateID: .hidSystemState)
+        guard AXIsProcessTrusted() else { return }
 
-        let keyDown = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: true) // V key
-        keyDown?.flags = .maskCommand
+        let source = CGEventSource(stateID: .combinedSessionState)
+        source?.setLocalEventsFilterDuringSuppressionState(
+            [.permitLocalMouseEvents, .permitSystemDefinedEvents],
+            state: .eventSuppressionStateSuppressionInterval)
+
+        let cmdFlag = CGEventFlags(rawValue: UInt64(CGEventFlags.maskCommand.rawValue) | 0x000008)
+        let keyDown = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: true)
         let keyUp = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: false)
-        keyUp?.flags = .maskCommand
-
-        keyDown?.post(tap: .cghidEventTap)
-        keyUp?.post(tap: .cghidEventTap)
+        keyDown?.flags = cmdFlag
+        keyUp?.flags = cmdFlag
+        keyDown?.post(tap: .cgSessionEventTap)
+        keyUp?.post(tap: .cgSessionEventTap)
     }
 
     private func writeToPasteboard(entry: ClipboardEntry) {

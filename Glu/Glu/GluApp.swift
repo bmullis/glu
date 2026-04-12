@@ -42,18 +42,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        NSLog("[Glu] applicationDidFinishLaunching")
-
-        guard let container = self.container else {
-            NSLog("[Glu] ERROR: no ModelContainer available")
-            return
-        }
+        guard let container = self.container else { return }
         let context = container.mainContext
 
         let monitor = ClipboardMonitor(modelContext: context)
         monitor.start()
         clipboardMonitor = monitor
-        NSLog("[Glu] ClipboardMonitor started")
 
         let paste = PasteService(clipboardMonitor: monitor, modelContext: context)
         pasteService = paste
@@ -61,16 +55,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let panel = PanelWindowController()
         panel.onItemSelected = { entry in
             paste.paste(entry: entry)
-            panel.hide()
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
-                paste.simulatePaste()
-            }
+            panel.hideForPaste()
+            paste.simulatePaste()
         }
         panelController = panel
 
         let hotkey = HotkeyManager()
         hotkey.onToggle = { [weak self] in
-            NSLog("[Glu] onToggle called, panelController: \(String(describing: self?.panelController))")
             self?.panelController?.toggle(modelContext: context)
         }
         hotkey.register()

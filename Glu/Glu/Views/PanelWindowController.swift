@@ -8,9 +8,7 @@ final class PanelWindowController {
     private var eventMonitor: Any?
     private var keyMonitor: Any?
     private(set) var isVisible = false
-
-    private var navigateHandler: ((_ direction: Int) -> Void)?
-    private var selectHandler: (() -> Void)?
+    private var panelState: PanelState?
 
     var onItemSelected: ((ClipboardEntry) -> Void)?
 
@@ -28,17 +26,14 @@ final class PanelWindowController {
         let panel = PanelWindow()
         self.panel = panel
 
-        let contentView = PanelContentView(
-            modelContext: modelContext,
-            onSelect: { [weak self] entry in
-                self?.onItemSelected?(entry)
-            },
-            onNavigate: { [weak self] navigate, select in
-                self?.navigateHandler = navigate
-                self?.selectHandler = select
-            }
-        )
-        .modelContainer(modelContext.container)
+        let state = PanelState()
+        state.onSelect = { [weak self] entry in
+            self?.onItemSelected?(entry)
+        }
+        self.panelState = state
+
+        let contentView = PanelContentView(modelContext: modelContext, panelState: state)
+            .modelContainer(modelContext.container)
 
         let hostingView = NSHostingView(rootView: contentView)
         hostingView.frame = panel.contentView?.bounds ?? .zero
@@ -72,8 +67,6 @@ final class PanelWindowController {
         guard isVisible, let panel = panel else { return }
         isVisible = false
         stopEventMonitors()
-        navigateHandler = nil
-        selectHandler = nil
 
         let screen = NSScreen.main ?? NSScreen.screens.first!
         var endFrame = panel.frame
@@ -86,7 +79,20 @@ final class PanelWindowController {
         }, completionHandler: { [weak self] in
             panel.orderOut(nil)
             self?.panel = nil
+            self?.panelState = nil
         })
+    }
+
+    /// Immediately removes the panel (no animation) so CGEvent paste
+    /// is not intercepted by our key window.
+    func hideForPaste() {
+        guard isVisible, let panel = panel else { return }
+        isVisible = false
+        stopEventMonitors()
+        panel.resignKey()
+        panel.orderOut(nil)
+        self.panel = nil
+        self.panelState = nil
     }
 
     private func positionPanel(_ panel: PanelWindow) {
@@ -117,13 +123,17 @@ final class PanelWindowController {
                 self.hide()
                 return nil
             case 123: // Left arrow
-                self.navigateHandler?(-1)
+                self.panelState?.navigate(-1)
                 return nil
             case 124: // Right arrow
-                self.navigateHandler?(1)
+                self.panelState?.navigate(1)
                 return nil
             case 36: // Return/Enter
-                self.selectHandler?()
+                if let state = self.panelState,
+                   let id = state.selectedID,
+                   let entry = state.entries.first(where: { $0.id == id }) {
+                    self.onItemSelected?(entry)
+                }
                 return nil
             default:
                 return event
