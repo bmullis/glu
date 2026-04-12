@@ -9,7 +9,8 @@ build:
 	xcodebuild -project $(PROJECT) -scheme $(SCHEME) -destination '$(DESTINATION)' -derivedDataPath $(BUILD_DIR) build
 
 run: build
-	open $(BUILD_DIR)/Build/Products/Debug/Glu.app
+	@$(BUILD_DIR)/Build/Products/Debug/Glu.app/Contents/MacOS/Glu >/dev/null 2>&1 &
+	@echo "Glu running (pid $$!)"
 
 clean:
 	xcodebuild -project $(PROJECT) -scheme $(SCHEME) clean
