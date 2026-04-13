@@ -20,9 +20,9 @@ final class PanelWindow: NSPanel {
         )
 
         level = .floating
-        isOpaque = false
-        backgroundColor = .clear
-        hasShadow = true
+        isOpaque = true
+        backgroundColor = .windowBackgroundColor
+        hasShadow = false
         isMovable = false
         isMovableByWindowBackground = false
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]

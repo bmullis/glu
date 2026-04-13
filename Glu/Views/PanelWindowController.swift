@@ -9,6 +9,7 @@ final class PanelWindowController {
     private var keyMonitor: Any?
     private(set) var isVisible = false
     private var panelState: PanelState?
+    var themeManager: ThemeManager?
 
     var onItemSelected: ((ClipboardEntry) -> Void)?
 
@@ -32,7 +33,7 @@ final class PanelWindowController {
         }
         self.panelState = state
 
-        let contentView = PanelContentView(modelContext: modelContext, panelState: state)
+        let contentView = PanelContentView(modelContext: modelContext, panelState: state, themeManager: themeManager ?? ThemeManager())
             .modelContainer(modelContext.container)
 
         let hostingView = NSHostingView(rootView: contentView)

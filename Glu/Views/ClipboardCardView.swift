@@ -3,6 +3,7 @@ import SwiftUI
 struct ClipboardCardView: View {
     let entry: ClipboardEntry
     let isSelected: Bool
+    var themeManager: ThemeManager
     let onSelect: () -> Void
     let onCopy: () -> Void
     let onDelete: () -> Void
@@ -15,20 +16,23 @@ struct ClipboardCardView: View {
             Spacer(minLength: 4)
 
             Divider()
-                .opacity(0.3)
+                .overlay(themeManager.divider)
 
             footer
                 .padding(.top, 6)
         }
         .padding(12)
         .frame(width: 280, height: 280)
-        .background(cardBackground)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(themeManager.cardBackground)
+        )
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay(
             RoundedRectangle(cornerRadius: 12)
-                .stroke(isSelected ? Color.accentColor : Color.white.opacity(0.08), lineWidth: isSelected ? 2.5 : 0.5)
+                .stroke(isSelected ? themeManager.accent : themeManager.divider, lineWidth: isSelected ? 2.5 : 0.5)
         )
-        .shadow(color: .black.opacity(isSelected ? 0.4 : 0.2), radius: isSelected ? 8 : 4, y: 2)
+        .neuExtruded(theme: themeManager, cornerRadius: 12, intensity: isSelected ? 1.5 : 1.0)
         .scaleEffect(isSelected ? 1.02 : 1.0)
         .animation(.easeOut(duration: 0.15), value: isSelected)
         .onTapGesture { onSelect() }
@@ -37,11 +41,6 @@ struct ClipboardCardView: View {
             Divider()
             Button("Delete", role: .destructive) { onDelete() }
         }
-    }
-
-    private var cardBackground: some View {
-        RoundedRectangle(cornerRadius: 12)
-            .fill(Color(nsColor: NSColor(white: 0.15, alpha: 1.0)))
     }
 
     @ViewBuilder
@@ -65,7 +64,7 @@ struct ClipboardCardView: View {
                 .font(isCode(text) ? .system(size: 11, design: .monospaced) : .system(size: 12))
                 .lineSpacing(2)
                 .lineLimit(14)
-                .foregroundColor(.white.opacity(0.85))
+                .foregroundColor(themeManager.textPrimary)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
@@ -75,11 +74,11 @@ struct ClipboardCardView: View {
         VStack(alignment: .leading, spacing: 6) {
             Image(systemName: "link")
                 .font(.system(size: 14))
-                .foregroundColor(.blue)
+                .foregroundColor(themeManager.urlColor)
             Text(entry.textPreview ?? "URL")
                 .font(.system(size: 11))
                 .lineLimit(4)
-                .foregroundColor(.blue.opacity(0.9))
+                .foregroundColor(themeManager.urlColor)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -96,7 +95,7 @@ struct ClipboardCardView: View {
         } else {
             Image(systemName: "photo")
                 .font(.system(size: 28))
-                .foregroundColor(.secondary)
+                .foregroundColor(themeManager.textTertiary)
                 .frame(maxWidth: .infinity, alignment: .center)
         }
     }
@@ -106,11 +105,11 @@ struct ClipboardCardView: View {
         VStack(alignment: .leading, spacing: 6) {
             Image(systemName: "doc.fill")
                 .font(.system(size: 20))
-                .foregroundColor(.secondary)
+                .foregroundColor(themeManager.fileIconColor)
             Text(entry.textPreview ?? "File")
                 .font(.system(size: 11))
                 .lineLimit(3)
-                .foregroundColor(.white.opacity(0.85))
+                .foregroundColor(themeManager.textPrimary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -119,12 +118,12 @@ struct ClipboardCardView: View {
         HStack {
             Text(entry.createdAt, style: .relative)
                 .font(.system(size: 10))
-                .foregroundColor(.white.opacity(0.4))
+                .foregroundColor(themeManager.textSecondary)
             Spacer()
             if let app = entry.sourceAppBundleID {
                 Text(app.components(separatedBy: ".").last ?? app)
                     .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(.white.opacity(0.4))
+                    .foregroundColor(themeManager.textSecondary)
             }
         }
     }

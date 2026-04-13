@@ -36,6 +36,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var panelController: PanelWindowController?
     private var pasteService: PasteService?
     private var container: ModelContainer?
+    let themeManager = ThemeManager()
 
     func setup(container: ModelContainer) {
         self.container = container
@@ -45,6 +46,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard let container = self.container else { return }
         let context = container.mainContext
 
+        themeManager.startObservingAppearance()
+
         let monitor = ClipboardMonitor(modelContext: context)
         monitor.start()
         clipboardMonitor = monitor
@@ -53,6 +56,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         pasteService = paste
 
         let panel = PanelWindowController()
+        panel.themeManager = themeManager
         panel.onItemSelected = { entry in
             paste.paste(entry: entry)
             panel.hideForPaste()

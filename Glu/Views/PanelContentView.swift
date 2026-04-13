@@ -31,10 +31,12 @@ struct PanelContentView: View {
     @State private var searchText = ""
     @ObservedObject var panelState: PanelState
     let modelContext: ModelContext
+    var themeManager: ThemeManager
 
-    init(modelContext: ModelContext, panelState: PanelState) {
+    init(modelContext: ModelContext, panelState: PanelState, themeManager: ThemeManager) {
         self.modelContext = modelContext
         self.panelState = panelState
+        self.themeManager = themeManager
     }
 
     private var filteredEntries: [ClipboardEntry] {
@@ -54,23 +56,14 @@ struct PanelContentView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            searchBar
-            Divider().opacity(0.3)
+            toolbar
             if filteredEntries.isEmpty {
                 emptyState
             } else {
                 cardScroller
             }
         }
-        .background(.ultraThinMaterial)
-        .background(Color(nsColor: NSColor(white: 0.06, alpha: 0.35)))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.white.opacity(0.1), lineWidth: 0.5)
-        )
-        .padding(.horizontal, 12)
-        .padding(.bottom, 10)
+        .background(themeManager.primaryBackground)
         .onChange(of: filteredEntries.map(\.id)) { _, newIDs in
             panelState.entries = filteredEntries
             if panelState.selectedID == nil || !newIDs.contains(panelState.selectedID!) {
@@ -83,18 +76,51 @@ struct PanelContentView: View {
         }
     }
 
+    private var toolbar: some View {
+        HStack(spacing: 8) {
+            searchBar
+            themeToggle
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(themeManager.toolbarBackground)
+    }
+
     private var searchBar: some View {
         HStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
-                .foregroundColor(.white.opacity(0.4))
+                .foregroundColor(themeManager.textSecondary)
                 .font(.system(size: 13))
-            TextField("Search clipboard history...", text: $searchText)
-                .textFieldStyle(.plain)
-                .font(.system(size: 13))
-                .foregroundColor(.white.opacity(0.9))
+            ZStack(alignment: .leading) {
+                if searchText.isEmpty {
+                    Text("Search clipboard history...")
+                        .font(.system(size: 13))
+                        .foregroundColor(themeManager.textSecondary)
+                }
+                TextField("", text: $searchText)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 13))
+                    .foregroundColor(themeManager.textPrimary)
+            }
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(themeManager.searchBarBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .neuInset(theme: themeManager, cornerRadius: 10)
+    }
+
+    private var themeToggle: some View {
+        Button(action: { themeManager.toggle() }) {
+            Image(systemName: themeManager.mode.iconName)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundColor(themeManager.textSecondary)
+                .frame(width: 28, height: 28)
+                .background(themeManager.cardBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .neuExtruded(theme: themeManager, cornerRadius: 8, intensity: 0.5)
+        }
+        .buttonStyle(.plain)
     }
 
     private var emptyState: some View {
@@ -102,7 +128,7 @@ struct PanelContentView: View {
             Spacer()
             Text("Nothing copied yet")
                 .font(.system(size: 14))
-                .foregroundColor(.white.opacity(0.3))
+                .foregroundColor(themeManager.textTertiary)
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -116,6 +142,7 @@ struct PanelContentView: View {
                         ClipboardCardView(
                             entry: entry,
                             isSelected: panelState.selectedID == entry.id,
+                            themeManager: themeManager,
                             onSelect: { panelState.onSelect?(entry) },
                             onCopy: { copyEntry(entry) },
                             onDelete: { deleteEntry(entry) }
